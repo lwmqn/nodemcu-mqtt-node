@@ -24,6 +24,7 @@ function MqttNode:publish(topic, message, qos, retain, callback)
 
 function MqttNode:getAttrs(...)
 function MqttNode:setAttrs(...)
+_findAttrs
 
 function MqttNode:_target(oid, iid, rid)
 function MqttNode:_initResrc(oid, iid, rid, value)
@@ -40,3 +41,7 @@ function MqttNode:_startLifeUpdater()
 function MqttNode:_stopLifeUpdater()
 function MqttNode:_checkAndReportResrc(rid, currentValue)
 
+function MqttNode:enableReport(oid, iid, rid)
+function MqttNode:disableReport(oid, iid, rid)
+
+function MqttNode:_readResrc(oid, iid, rid, callback)

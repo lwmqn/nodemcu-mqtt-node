@@ -1,6 +1,4 @@
-local str = 'pfx_hi_sfx'
-print(str:sub(1, 1))
-print(str:sub(-1))
+print( nil * 10)
 
 -- local x = 120
 -- local x = tonumber(x) or x

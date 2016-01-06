@@ -14,15 +14,11 @@ local cmdcode = { read = 0, write = 1, discover = 2, writeAttrs = 3, execute = 4
 local trgtype = { root = 0, object = 1, instance = 2, resource = 3 }
 
 -- ************** MqttNode Base Class  **************
-local modName = ...
 local MqttNode = EventEmitter({
-    clientId = nil,
-    lifetime = 86400,
-    ip = nil,
-    mac = nil,
-    version = '0.0.1'
+    clientId = nil, lifetime = 86400, ip = nil, mac = nil, version = '0.0.1'
 })
 
+local modName = ...
 _G[modName] = MqttNode
 
 -- ************** Constructor **************
@@ -42,7 +38,7 @@ function MqttNode:new(qnode)
 
     qnode.mc = nil
     qnode.so = {}
-    self._buildDefaultSo(qnode)  -- Build Default Objects
+    self:_buildDefaultSo(qnode)  -- Build Default Objects
 
     qnode._repAttrs = {}
     qnode._trandId = 0
@@ -56,9 +52,7 @@ end
 -- ok
 function MqttNode:setDevAttrs(devAttrs)
     assert(type(devAttrs) == "table", "devAttrs should be a table.")
-
-    local updated = {}
-    local count = 0
+    local updated, count= {}, 0
 
     for k, v in pairs(devAttrs) do
         -- only these 3 parameters can be changed at runtime
@@ -88,7 +82,6 @@ function MqttNode:initResrc(...)
     end
 
     assert(type(resrcs) == "table", "resrcs should be a table.")
-
     self.so[oid] = self.so[oid] or {}
 
     iid = iid or self:_assignIid(self.so[oid])
@@ -96,7 +89,6 @@ function MqttNode:initResrc(...)
     -- assert(type(iid) == "number", "iid should be a number.")
 
     self.so[oid][iid] = self.so[oid][iid] or {}
-
     for rid, rval in pairs(resrcs) do self:_initResrc(oid, iid, rid, rval) end
 
     return self
@@ -111,13 +103,9 @@ function MqttNode:readResrc(oid, iid, rid, callback)
         local resrc = self.so[oid][iid][rid]
         if (type(resrc) == 'table') then
             if (resrc._isCallback == true) then
-                if (type(resrc.read) == 'function') then
-                    resrc.read(callback)
-                elseif (type(resrc.exec) == 'function') then
-                    callback(errcode.unreadable, '_exec_')
-                else
-                    callback(errcode.unreadable, '_unreadable_')
-                end
+                if (type(resrc.read) == 'function') then resrc.read(callback)
+                elseif (type(resrc.exec) == 'function') then callback(errcode.unreadable, '_exec_')
+                else callback(errcode.unreadable, '_unreadable_') end
             else
                 callback(errcode.success, resrc)
             end
@@ -138,11 +126,8 @@ function MqttNode:writeResrc(oid, iid, rid, value, callback)
         local resrc = self.so[oid][iid][rid]
         if (type(resrc) == 'table') then
             if (resrc._isCallback) then
-                if (type(resrc.write) == 'function') then
-                    resrc.write(value, callback)
-                else
-                    callback(errcode.unwritable, nil)
-                end
+                if (type(resrc.write) == 'function') then resrc.write(value, callback)
+                else callback(errcode.unwritable, nil) end
             else
                 resrc = value
                 callback(errcode.success, resrc)
@@ -165,7 +150,7 @@ function MqttNode:execResrc(oid, iid, rid, args, callback)
         if (type(resrc) ~= 'table' or type(resrc.exec) ~= 'function') then
             callback(errcode.notfound, { status: 405 })
         else
-            resrc:exec(args, callback)
+            resrc.exec(args, callback)
         end
     end
 end
@@ -179,7 +164,6 @@ function MqttNode:dump()
     dump.ip = self.ip
     dump.mac = self.mac
     dump.version = self.version
-
     for oid, obj in pairs(self.so) do dump.so[oid] = self:_dumpObject(oid) end
 
     return dump
@@ -213,19 +197,15 @@ function MqttNode:resrcList(oid)
     if (type(obj) == 'table') then
         for iid, resrcs in pairs(obj) do
             resrcList[iid] = resrcList[iid] or {}
-            for rid, r in resrcs do
-                table.insert(resrcList[iid], rid)
-            end
+            for rid, r in resrcs do table.insert(resrcList[iid], rid) end
         end
     end
     return resrcList
 end
 
 function MqttNode:_requestHandler(msg)
-    local tgtype, target
     local rsp = { transId = msg.transId, cmdId = msg.cmdId, status = 200, data = nil }
-
-    tgtype, target = self:_target(msg.oid, msg.iid, msg.rid)
+    local tgtype, target = self:_target(msg.oid, msg.iid, msg.rid)
 
     if (tgtype == trgtype.root or msg.oid == nil)
         rsp.status = 400    -- Request Root is not allowed (400 Bad Request)
@@ -235,7 +215,7 @@ function MqttNode:_requestHandler(msg)
 
     if (target == '__notfound') then
         rsp.status = 404
-        qnode:pubResponse(rsp)
+        self:pubResponse(rsp)
         return
     end
 
@@ -300,11 +280,9 @@ function MqttNode:_requestHandler(msg)
             self:pubResponse(rsp)
             return
         else
-            -- [TODO] check bad attr key : 400
+            -- check bad attr key : 400
             for k, v in pairs(msg.attrs) do
-                if (allowedAttrsMock[k] ~= true) then
-                    badAttr = badAttr or true
-                end
+                if (allowedAttrsMock[k] ~= true) then badAttr = badAttr or true end
             end
 
             if (badAttr == true) then
@@ -325,21 +303,21 @@ function MqttNode:_requestHandler(msg)
             -- [TODO] should be partially set?
             self:setAttrs(msg.oid, msg.iid, msg.attrs)
         elseif (tgtype == trgtype.resource) then
-            if (msg.attrs.cancel) then self.disableReport(msg.oid, msg.iid, msg.rid) end
+            if (msg.attrs.cancel) then self:disableReport(msg.oid, msg.iid, msg.rid) end
             -- [TODO] should be partially set?
             self:setAttrs(msg.oid, msg.iid, msg.rid, msg.attrs)
         end
 
         rsp.status = 204 -- 204: 'Changed'
-        self:pubResponse(rsp);
+        self:pubResponse(rsp)
 
     elseif (cmdId == cmdcode.execute) then
 
         if (tgtype ~= trgtype.resource) then
-            rsp.status = 405;    -- Method Not Allowed
+            rsp.status = 405    -- Method Not Allowed
             self:pubResponse(rsp)
         else
-            rsp.status = 204 -- 204: 'Changed'
+            rsp.status = 204    -- 204: 'Changed'
             self:execResrc(msg.oid, msg.iid, msg.rid, msg.data, function (err, execRsp)
                 for k, v in pairs(execRsp) do rsp[k] = v end
                 self:pubResponse(rsp)
@@ -348,7 +326,7 @@ function MqttNode:_requestHandler(msg)
 
     elseif (cmdId == cmdcode.observe) then
 
-        rsp.status = 205 -- 205: 'Content'
+        rsp.status = 205        -- 205: 'Content'
 
         if (tgtype == trgtype.object or tgtype == trgtype.instance) then
              rsp.status = 405   -- [TODO] will support in the future
@@ -362,18 +340,16 @@ function MqttNode:_requestHandler(msg)
         return
     else
         -- unknown request
-        rsp.status = 400 -- 400 bad request
+        rsp.status = 400        -- 400 bad request
         self:pubResponse(rsp)
     end
 end
 
--- [TODO] confirm { transId: xxx, status: ..., data: ...  }
 function MqttNode:_rawMessageHandler(conn, topic, message)
     local rspCb, strmsg, jmsg
     local intf = mutils.slashPath(topic)
 
     strmsg = self:decrypt(message)
-
     -- emit raw message out
     self.emit('message', strmsg)
 
@@ -383,33 +359,33 @@ function MqttNode:_rawMessageHandler(conn, topic, message)
 
     if (intf == self._subics.register) then
         -- get register response
-        rspCb = self._getIntfCallback('register', jmsg.transId)
+        rspCb = self:_getIntfCallback('register', jmsg.transId)
         if (jmsg.status == 200 or jmsg.status == 201) then
-            self._startLifeUpdater()
+            self:_startLifeUpdater()
         else
-            self._stopLifeUpdater()
+            self:_stopLifeUpdater()
         end
 
     elseif (intf == self._subics.deregister) then
         -- get deregister response
-        rspCb = self._getIntfCallback('deregister', jmsg.transId)
+        rspCb = self:_getIntfCallback('deregister', jmsg.transId)
 
     elseif (intf == self._subics.notify) then
         -- get notify response
-        rspCb = self._getIntfCallback('notify', jmsg.transId)
+        rspCb = self:_getIntfCallback('notify', jmsg.transId)
 
     elseif (intf == self._subics.update) then
         -- get update response
-        rspCb = self._getIntfCallback('update', jmsg.transId)
+        rspCb = self:_getIntfCallback('update', jmsg.transId)
 
     elseif (intf == self._subics.ping) then
         -- get ping response
-        rspCb = self._getIntfCallback('ping', jmsg.transId)
+        rspCb = self:_getIntfCallback('ping', jmsg.transId)
 
     elseif (intf == self._subics.request) then
         -- No callback
         evt = 'request'
-
+        self:_requestHandler(jmsg)
     elseif (intf == self._subics.announce) then
         -- No callback
         evt = 'announce'
@@ -417,11 +393,11 @@ function MqttNode:_rawMessageHandler(conn, topic, message)
     end
 
     if (rspCb ~= nil) then
-        _rmIntfCallback(intf, jmsg.transId) -- remove from deferCBs
+        self:_rmIntfCallback(intf, jmsg.transId) -- remove from deferCBs
         rspCb(nil, jmsg)
     end
 
-    if (evt ~= nil) then self.emit(evt, jmsg) end
+    if (evt ~= nil) then self:emit(evt, jmsg) end
 end
 
 function MqttNode:connect(url, opts)
@@ -434,7 +410,7 @@ function MqttNode:connect(url, opts)
     opts.secure = opts.secure or 0
 
     if (self.mc) then
-        self.mc.close()
+        self.mc:close()
     else
         self.mc = mqtt.Client(self.clientId, opts.keepalive, opts.username, opts.password, opt.cleansession)
     end
@@ -443,7 +419,7 @@ function MqttNode:connect(url, opts)
 
     mc:connect(url, opts.port, opts.secure, function (client)
         mc:on('message', function (conn, topic, msg)
-            self._rawMessageHandler(conn, topic, msg)
+            self:_rawMessageHandler(conn, topic, msg)
         end)
     end)
 end
@@ -454,8 +430,8 @@ end
 
 function MqttNode:pubRegister(callback)
     local regPubChannel = self._pubics.register
-    local transId = self:_nextTransId()
     local regData = {
+            transId = self:_nextTransId(),
             lifetime = self.lifetime,
             objList = self:objectList(),
             ip = self.ip,
@@ -464,32 +440,33 @@ function MqttNode:pubRegister(callback)
          }
 
     if (callback ~= nil) then self:_deferIntfCallback('register', transId, callback) end
-    -- [TODO] make sure the format
-    self:publish(regPubChannel, { transId = transId, data = regData })
+    self:publish(regPubChannel, regData)
 end
 
 function MqttNode:pubDeregister(callback)
     local deregPubChannel = self._pubics.deregister
-    local transId = self:_nextTransId()
 
     if (callback ~= nil) then self:_deferIntfCallback('deregister', transId, callback) end
-    self:publish(deregPubChannel, { transId = transId, data = nil })
+    self:publish(deregPubChannel, { transId = self:_nextTransId(), data = nil })
 end
 
 function MqttNode:pubNotify(data, callback)
     local notifyPubChannel = self._pubics.notify
-    local transId = self:_nextTransId()
+    data.transId = self:_nextTransId()
 
-    if (callback ~= nil) then self:_deferIntfCallback('notify', transId, callback) end
-    self:publish(notifyPubChannel, { transId = transId, data = data })
+    self:_deferIntfCallback('notify', transId, function (err, rsp)
+        if (rsp.cancel) then self:disableReport(data.oid, data.iid, data.rid) end
+        if (callback ~= nil) then callback(err, rsp) end
+    end)
+
+    self:publish(notifyPubChannel, data)
 end
 
 function MqttNode:pingServer(callback)
     local pingPubChannel = self._pubics.ping
-    local transId = self:_nextTransId()
 
     if (callback ~= nil) then self:_deferIntfCallback('ping', transId, callback) end
-    self:publish(pingPubChannel, { transId = transId, data = nil })
+    self:publish(pingPubChannel, { transId = self:_nextTransId(), data = nil })
 end
 
 function MqttNode:pubUpdate(devAttrs, callback)
@@ -497,10 +474,10 @@ function MqttNode:pubUpdate(devAttrs, callback)
     assert(devAttrs.mac == nil, "mac cannot be changed at runtime.")
 
     local updatePubChannel = self._pubics.update
-    local transId = self:_nextTransId()
 
+    devAttrs.transId = self:_nextTransId()
     if (callback ~= nil) then self:_deferIntfCallback('update', transId, callback) end
-    self:publish(updatePubChannel, { transId = transId, data = devAttrs })
+    self:publish(updatePubChannel, devAttrs)
 end
 
 function MqttNode:pubResponse(rsp, callback)
@@ -509,17 +486,11 @@ function MqttNode:pubResponse(rsp, callback)
 end
 
 function MqttNode:publish(topic, message, qos, retain, callback)
-    if (type(message) == 'table') then
-        message = cjson.encode(message)
-    end
+    if (type(message) == 'table') then message = cjson.encode(message) end
+    local encrypted = self:encrypt(message)
 
-    m:publish(topic, message, qos, retain, function (client)
-        self.emit('published', {
-            topic = topic,
-            message = message,
-            options = options
-        })
-
+    m:publish(topic, encrypted, qos, retain, function (client)
+        self:emit('published', { topic = topic, message = message, options = options })
         if (callback ~= nil) then callback() end
     end)
 end
@@ -628,31 +599,21 @@ end
 -- ********************************************* --
 -- ok
 function MqttNode:_target(oid, iid, rid)
-    local tgtype
-    local target
+    local tgtype, target
 
     if (oid ~= nil) then
-        if (oid == '') then
-            tgtype = trgtype.root
-        else
-            tgtype = trgtype.object         --'object'
-        end
+        if (oid == '') then tgtype = trgtype.root
+        else tgtype = trgtype.object end    --'object'
+
         if (iid ~= nil) then
             tgtype = trgtype.instance       -- 'instance'
-            if (rid ~= nil) then
-                tgtype = trgtype.resource   -- 'resource'
-            end
+            if (rid ~= nil) then tgtype = trgtype.resource end  -- 'resource'
         end
     end
 
-    if (tgtype == trgtype.object) then
-        target = self._dumpObject(oid)
-    elseif (tgtype == trgtype.instance) then
-        target = self._dumpInstance(oid, iid)
-    elseif (tgtype == trgtype.resource) then
-        self:readResrc(oid, iid, rid, function (err, val)
-            target = val
-        end)
+    if (tgtype == trgtype.object) then target = self:_dumpObject(oid)
+    elseif (tgtype == trgtype.instance) then target = self:_dumpInstance(oid, iid)
+    elseif (tgtype == trgtype.resource) then self:readResrc(oid, iid, rid, function (err, val) target = val end)
     end
 
     if (target == nil) then target = '__notfound' end
@@ -705,13 +666,12 @@ end
 function MqttNode:_assignIid(objTbl)
     local i = 0
     while objTbl[i] do i = i + 1 end
-
     return i
 end
 
 -- ok
 function MqttNode:_deferIntfCallback(intf, transId, callback)
-    self.intfRspCbs[intf] = qnode.intfRspCbs[intf] or {}
+    self.intfRspCbs[intf] = self.intfRspCbs[intf] or {}
     self.intfRspCbs[intf][transId] = callback
 end
 
@@ -723,53 +683,37 @@ end
 
 -- ok
 function MqttNode:_rmIntfCallback(intf, transId)
-    if (self._intfRspCbs[intf] ~= nil) then
-        self._intfRspCbs[intf][transId] = nil
-    end
+    if (self._intfRspCbs[intf] ~= nil) then self._intfRspCbs[intf][transId] = nil end
 end
 
 -- ok
 function MqttNode:_nextTransId(intf)
     self._trandId = self._trandId + 1
-
     if (self._trandId > 255) then self._trandId = 0 end
 
     if (intf ~= nil) then
-        while self:_getIntfCallback(intf, self._trandId) do
-            self._trandId = self._trandId + 1
-        end
+        while self:_getIntfCallback(intf, self._trandId) do self._trandId = self._trandId + 1 end
     end
-
     return self._trandId
 end
 
 -- ok
 function MqttNode:_dumpInstance(oid, iid)
-    local dump = {}
-    local inst = self.so[oid][iid]
+    local dump, inst = {}, self.so[oid][iid]
 
     if (inst == nil) then return nil end
-
     for rid, resrc in pairs(inst) do
-        self:readResrc(oid, iid, rid, function (err, val)
-            dump[rid] = val
-        end)
+        self:readResrc(oid, iid, rid, function (err, val) dump[rid] = val end)
     end
-
     return dump
 end
 
 -- ok
 function MqttNode:_dumpObject(oid)
-    local dump = {}
-    local obj = self.so[oid]
+    local dump, obj = {}, self.so[oid]
 
     if (obj == nil) then return nil end
-
-    for iid, inst in pairs(obj) do
-        dump[iid] = self:_dumpInstance(oid, iid)
-    end
-
+    for iid, inst in pairs(obj) do dump[iid] = self:_dumpInstance(oid, iid) end
     return dump
 end
 
@@ -784,7 +728,7 @@ function MqttNode:_buildDefaultSo()
         [2] = 1,                -- default pmin in seconds
         [3] = 60,               -- default pmax on seconds
         [8] = {                 -- registration update trigger
-            exec: function ()
+            exec = function ()
             end
         }
     }
@@ -816,21 +760,16 @@ function MqttNode:_buildDefaultSo()
 end
 
 function MqttNode:_startLifeUpdater()
-    local checkPoint
-    local lfCountSecs = 0
+    local lfCountSecs, checkPoint = 0
 
-    if (self.lifetime > 43199)
-        checkPoint = 43200      -- 12 hours
+    if (self.lifetime > 43199) then  checkPoint = 43200 end     -- 12 hours
 
     if (self._lifeUpdater ~= nil) then
         timer.clearInterval(self._lifeUpdater)
         self._lifeUpdater = nil
     end
 
-    self._lifeUpdater = timer.setInterval(function ()
-    end)
-
-    self.lifeUpdater = setInterval(function () {
+    self.lifeUpdater = timer.setInterval(function () {
         lfCountSecs = lfCountSecs + 1
         if (lfCountSecs == checkPoint) then
             self:pubUpdate({ lifetime: self.lifetime })
@@ -849,13 +788,8 @@ end
 function MqttNode:_checkAndReportResrc(oid, iid, rid, currVal)
     local resrcAttrs = self:getAttrs(oid, iid, rid)
 
-    if (resrcAttrs ~= nil) then -- no attrs were set
-        return false
-    end
-
-    if (resrcAttrs.cancel or resrcAttrs.mute) then
-        return false
-    end
+    if (resrcAttrs ~= nil) then return false end    -- no attrs were set
+    if (resrcAttrs.cancel or resrcAttrs.mute) then return false end
 
     if (self:_isResrcNeedReport(oid, iid, rid, currVal)) then
         resrcAttrs.lastRpVal = currVal
@@ -867,12 +801,10 @@ function MqttNode:_checkAndReportResrc(oid, iid, rid, currVal)
 end
 
 function MqttNode:_isResrcNeedReport(oid, iid, rid, currVal)
-    local resrcAttrs = self:getAttrs(oid, iid, rid)
-    local needReport = false
+    local resrcAttrs, needReport = self:getAttrs(oid, iid, rid), false
     local lastRpVal, gt, lt, step
 
     if (resrcAttrs == nil) then return false end
-
     -- .report() has taclked the lastReportValue assigment
     lastRpVal = resrcAttrs.lastRpVal
     gt = resrcAttrs.gt
@@ -880,7 +812,6 @@ function MqttNode:_isResrcNeedReport(oid, iid, rid, currVal)
     step = resrcAttrs.step
 
     if (type(currVal) == 'table') then
-
         if (type(lastRpVal) == 'table') then
             for k, v in pairs(currVal) do
                 if (v ~= lastRpVal[k]) then needReport = true end
@@ -890,36 +821,106 @@ function MqttNode:_isResrcNeedReport(oid, iid, rid, currVal)
         end
 
     elseif (type(currVal) ~= 'number') then
-
         if (lastRpVal ~= currVal) then needReport = true end
-
     else
-
         if (type(gt) == 'number' and type(lt) == 'number' and lt > gt) then
-            if (lastRpVal ~= currVal and currVal > gt and currVal < lt) then
-                needReport = true
-            end
+            if (lastRpVal ~= currVal and currVal > gt and currVal < lt) then needReport = true end
         else
-            if (type(gt) == 'number' and lastRpVal ~= currVal and currVal > gt) then
-                needReport = true
-            end
-
-            if (type(lt) == 'number' and lastRpVal ~= currVal and currVal < lt) then
-                needReport = true
-            end
+            if (type(gt) == 'number' and lastRpVal ~= currVal and currVal > gt) then needReport = true end
+            if (type(lt) == 'number' and lastRpVal ~= currVal and currVal < lt) then needReport = true end
         end
 
         if (type(step) == 'number') then
-            if (math.abs(currVal - lastRpVal) > step) then
-                needReport = true
-            end
+            if (math.abs(currVal - lastRpVal) > step) then needReport = true end
         end
-
     end
 
     return needReport
 end
 
+-- [TODO] need check
+function MqttNode:enableReport(oid, iid, rid, attrs)
+    local resrcAttrs, resrcReporter, pminMs, pmaxMs
+    local tgtype, target = self:_target(oid, iid, rid)
+
+    if (target == '__notfound') then return false end
+
+    resrcAttrs = self:getAttrs(oid, iid, rid)
+
+    if (resrcAttrs == nil) then resrcAttrs = self:_findAttrs(oid, iid, rid) end
+
+    resrcAttrs.cancel = false
+    resrcAttrs.mute = true
+
+    -- [TODO] pmin and pmax are MUSTs
+    pminMs = resrcAttrs.pmin * 1000 or 0
+    pmaxMs = resrcAttrs.pmax * 1000 or 600000
+
+    -- reporter place holder
+    self.reporters[oid] = self.reporters[oid] or {}
+    self.reporters[oid][iid] = self.reporters[oid][iid] or {}
+    self.reporters[oid][iid][rid] = { minRep = nil, maxRep = nil, poller = nil }
+    resrcReporter = self.reporters[oid][iid][rid]
+
+    -- mute is use to control the poller
+    resrcReporter.minRep = timer.setTimeout(function ()
+        if (pminMs == 0) then   -- if no pmin, just report at pmax triggered
+            resrcAttrs.mute = false
+        else
+            self:readResrc(oid, iid, rid, function (err, val)
+                resrcAttrs.mute = false
+                self:pubNotify({ oid = oid, iid = iid, rid = rid, data = val })
+            end)
+        end
+    end, pminMs)
+
+    resrcReporter.maxRep = timer.setInterval(function ()
+        resrcAttrs.mute = true
+
+        self:readResrc(oid, iid, rid, function (err, val)
+            resrcAttrs.mute = false
+            self:pubNotify({ oid = oid, iid = iid, rid = rid, data = val })
+        end)
+
+        resrcReporter.minRep = nil
+        resrcReporter.minRep = timer.setTimeout(function () {
+            if (pminMs == 0) then --  if no pmin, just report at pmax triggered
+                resrcAttrs.mute = false;
+            else
+                self:readResrc(oid, iid, rid, function (err, val)
+                    resrcAttrs.mute = false
+                    self:pubNotify({ oid = oid, iid = iid, rid = rid, data = val })
+                end)
+            end
+        end, pminMs)
+    end, pmaxMs)
+
+    return true
+end
+
+-- [TODO] need check
+function MqttNode:disableReport(oid, iid, rid)
+    local resrcAttrs, resrcReporter = self:getAttrs(oid, iid, rid), self.reporters[oid]
+
+    resrcReporter = resrcReporter and resrcReporter[iid]
+    resrcReporter = resrcReporter and resrcReporter[rid]
+
+    if (resrcReporter == nil) then return self end
+    if (resrcAttrs == nil) then resrcAttrs = self:_findAttrs(oid, iid, rid) end
+    -- if resrcAttrs was set before, dont delete it.
+    resrcAttrs.cancel = true
+    resrcAttrs.mute = true
+
+    if (resrcReporter) then
+        timer.clearTimeout(resrcReporter.minRep)
+        timer.clearInterval(resrcReporter.maxRep)
+        timer.clearInterval(resrcReporter.poller)
+        resrcReporter.minRep = nil
+        resrcReporter.maxRep = nil
+        resrcReporter.poller = nil
+    end
+    return self
+end
 
 return MqttNode
 -- --[[
