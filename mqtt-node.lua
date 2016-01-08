@@ -143,12 +143,12 @@ end
 
 function MqttNode:execResrc(oid, iid, rid, args, callback)
     if (self.so[oid] == nil or self.so[oid][iid] == nil or self.so[oid][iid][rid] == nil) then
-        callback(errcode.notfound, { status: 404 })
+        callback(errcode.notfound, { status = 404 })
     else
         local resrc = self.so[oid][iid][rid]
 
         if (type(resrc) ~= 'table' or type(resrc.exec) ~= 'function') then
-            callback(errcode.notfound, { status: 405 })
+            callback(errcode.notfound, { status = 405 })
         else
             resrc.exec(args, callback)
         end
@@ -207,7 +207,7 @@ function MqttNode:_requestHandler(msg)
     local rsp = { transId = msg.transId, cmdId = msg.cmdId, status = 200, data = nil }
     local tgtype, target = self:_target(msg.oid, msg.iid, msg.rid)
 
-    if (tgtype == trgtype.root or msg.oid == nil)
+    if (tgtype == trgtype.root or msg.oid == nil) then
         rsp.status = 400    -- Request Root is not allowed (400 Bad Request)
         self:pubResponse(rsp)
         return
@@ -239,7 +239,7 @@ function MqttNode:_requestHandler(msg)
         elseif (tgtype == trgtype.resource) then
 
             self:writeResrc(msg.oid, msg.iid, msg.rid, msg.data, function (err, val)
-                if (err = errcode.unwritable) then
+                if (err == errcode.unwritable) then
                     rsp.status = 405
                 else
                     rsp.status = 204 -- 204: 'Changed'
@@ -769,13 +769,13 @@ function MqttNode:_startLifeUpdater()
         self._lifeUpdater = nil
     end
 
-    self.lifeUpdater = timer.setInterval(function () {
+    self.lifeUpdater = timer.setInterval(function ()
         lfCountSecs = lfCountSecs + 1
         if (lfCountSecs == checkPoint) then
-            self:pubUpdate({ lifetime: self.lifetime })
+            self:pubUpdate({ lifetime = self.lifetime })
             self:_startLifeUpdater()
         end
-    , 1000)
+    end, 1000)
 end
 
 function MqttNode:_stopLifeUpdater()
@@ -883,7 +883,7 @@ function MqttNode:enableReport(oid, iid, rid, attrs)
         end)
 
         resrcReporter.minRep = nil
-        resrcReporter.minRep = timer.setTimeout(function () {
+        resrcReporter.minRep = timer.setTimeout(function ()
             if (pminMs == 0) then --  if no pmin, just report at pmax triggered
                 resrcAttrs.mute = false;
             else
