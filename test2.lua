@@ -1,5 +1,27 @@
-print( nil * 10)
+-- print( tonumber(nil))
+local x = {
+	fn = function (w, k) 
+		print(w)
+		print(k)
+	end,
+	a = { 'hi', 'you' }
+}
 
+local y = { 1, 2}
+
+print(unpack(y))
+
+-- function X(...)
+-- 	local a, b, c = ...
+-- 	print(a)
+-- 	print(b)
+-- 	print(c)
+
+-- end
+-- -- X(1, 2 )
+-- local oid
+-- oid = tonumber(oid) or oid
+-- print(oid)
 -- local x = 120
 -- local x = tonumber(x) or x
 -- print(x)
