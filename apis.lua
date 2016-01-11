@@ -1,47 +1,50 @@
 
-function MqttNode:new(qnode)
-function MqttNode:setDevAttrs(devAttrs)
-function MqttNode:initResrc(...)
-function MqttNode:readResrc(oid, iid, rid, callback)
-function MqttNode:writeResrc(oid, iid, rid, value, callback)
-function MqttNode:execResrc(oid, iid, rid, value, callback)
+ok function MqttNode:new(qnode)
+ok function MqttNode:setDevAttrs(devAttrs)
+ok function MqttNode:initResrc(...)	-- iid should be given, resrcs should be a table
+ok function MqttNode:readResrc(oid, iid, rid, callback) 	
+ok function MqttNode:writeResrc(oid, iid, rid, value, callback)
 
-function MqttNode:dump()
-function MqttNode:objectList()
+function MqttNode:execResrc(oid, iid, rid, value, callback)  -- [?] arg
 
-function MqttNode:encrypt(msg)
-function MqttNode:decrypt(msg)
-function MqttNode:resrcList(oid)
-function MqttNode:connect(url, opts)
+ok function MqttNode:dump()
+ok function MqttNode:objectList()
+ok function MqttNode:encrypt(msg)
+ok function MqttNode:decrypt(msg)
+ok function MqttNode:resrcList(oid)
 
-function MqttNode:pubRegister(callback)
-function MqttNode:pubDeregister(callback)
-function MqttNode:pubNotify(data, callback)
-function MqttNode:pingServer(callback)
-function MqttNode:pubUpdate(devAttrs, callback)
-function MqttNode:pubResponse(rsp, callback)
-function MqttNode:publish(topic, message, qos, retain, callback)
+ok function MqttNode:connect(url, opts)
+ok function MqttNode:close(callback)
 
-function MqttNode:getAttrs(...)
-function MqttNode:setAttrs(...)
-_findAttrs
+ok function MqttNode:_rawMessageHandler(conn, topic, message)
+ok function MqttNode:_requestHandler(msg)
 
-function MqttNode:_target(oid, iid, rid)
-function MqttNode:_initResrc(oid, iid, rid, value)
-function MqttNode:_assignIid(objTbl)
-function MqttNode:_deferIntfCallback(intf, transId, callback)
-function MqttNode:_getIntfCallback(intf, transId)
-function MqttNode:_nextTransId(intf)
-function MqttNode:_dumpInstance(oid, iid)
-function MqttNode:_dumpObject(oid)
+
+ok function MqttNode:pubRegister(callback)
+ok function MqttNode:pubDeregister(callback)
+ok function MqttNode:pubNotify(data, callback)
+ok function MqttNode:pingServer(callback)
+ok function MqttNode:pubUpdate(devAttrs, callback)
+ok function MqttNode:pubResponse(rsp, callback)
+ok function MqttNode:publish(topic, message, qos, retain, callback)
+ok function MqttNode:subscribe(topic, qos, callback)
+
+ok function MqttNode:getAttrs(...)   nil for notfound, default if empty, yes if there
+ok function MqttNode:setAttrs(...)
+-- _findAttrs
+
+ok function MqttNode:_target(oid, iid, rid)
+ok function MqttNode:_nextTransId(intf)
+-- function MqttNode:_dumpInstance(oid, iid)
+ok function MqttNode:_dumpObject(oid)
 
 function MqttNode:_buildDefaultSo()
 
-function MqttNode:_startLifeUpdater()
-function MqttNode:_stopLifeUpdater()
-function MqttNode:_checkAndReportResrc(rid, currentValue)
+ok function MqttNode:_lifeUpdate(enable)
+ok function MqttNode:_checkAndReportResrc(rid, currentValue)
 
-function MqttNode:enableReport(oid, iid, rid)
-function MqttNode:disableReport(oid, iid, rid)
+ok function MqttNode:enableReport(oid, iid, rid)
+ok function MqttNode:disableReport(oid, iid, rid)
 
-function MqttNode:_readResrc(oid, iid, rid, callback)
+ok function MqttNode:_readResrc(chk, oid, iid, rid, callback)
+ok function MqttNode:_timeoutCtrl(key, delay)

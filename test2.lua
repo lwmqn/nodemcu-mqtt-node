@@ -1,15 +1,30 @@
+local x = { id = 1}
+function x:x(name)
+
+	function y()
+		print('hi')
+		self.id = self.id + 1
+		print(self.id)
+	end
+
+	y()
+	print(name)
+end
+
+x:x('simen')
+print(x.id)
 -- print( tonumber(nil))
-local x = {
-	fn = function (w, k) 
-		print(w)
-		print(k)
-	end,
-	a = { 'hi', 'you' }
-}
+-- local x = {
+-- 	fn = function (w, k) 
+-- 		print(w)
+-- 		print(k)
+-- 	end,
+-- 	a = { 'hi', 'you' }
+-- }
 
-local y = { 1, 2}
+-- local y = { 1, 2}
 
-print(unpack(y))
+-- print(unpack(y))
 
 -- function X(...)
 -- 	local a, b, c = ...
