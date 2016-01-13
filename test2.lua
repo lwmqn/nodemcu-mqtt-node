@@ -1,18 +1,39 @@
-local x = { id = 1}
-function x:x(name)
+local x = {
+	name = 'simen',
+	say = nil
+}
 
-	function y()
-		print('hi')
-		self.id = self.id + 1
-		print(self.id)
+function _say(x, w)
+	print(x.name .. ' hi ' .. w) 
+	x.shout = function (xx,x1)
+		print(xx.name .. 'shout')
 	end
-
-	y()
-	print(name)
 end
 
-x:x('simen')
-print(x.id)
+x.say = _say
+
+x:say('yo')
+x.shout(x, 'yo')
+
+local h = 1234
+local k = 'xxxx' .. h
+print(k)
+x:shout('yo')
+-- local x = { id = 1}
+-- function x:x(name)
+
+-- 	function y()
+-- 		print('hi')
+-- 		self.id = self.id + 1
+-- 		print(self.id)
+-- 	end
+
+-- 	y()
+-- 	print(name)
+-- end
+
+-- x:x('simen')
+-- print(x.id)
 -- print( tonumber(nil))
 -- local x = {
 -- 	fn = function (w, k) 
