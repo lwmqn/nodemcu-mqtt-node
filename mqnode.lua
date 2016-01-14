@@ -18,8 +18,6 @@ local PFX_LEN = #PFX
 
 function M:new(n)
     n = n or {}
-    assert(type(n.mac) == 'string', "mac should be a string.")
-    assert(type(n.ip) == 'string', "ip should be a string.")
     n.clientId = n.clientId or 'qn-' .. n.mac
     n.lifetime = n.lifetime or 86400
     n.version = n.version or '0.0.1'
@@ -46,7 +44,7 @@ function M:new(n)
     n._rpters = {}
     n._on = {}
     n.timer = tm
-    
+
     n:on('raw', function (...) self:_rawHdlr(...) end)
     n:on('_request', function (...) self:_reqHdlr(...) end)
 
